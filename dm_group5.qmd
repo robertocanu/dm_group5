@@ -231,10 +231,71 @@ zhvi_clean <- zhvi_clean %>%
 ```
 
 
+## Residential Construction Permits Dataset
+
+Keeping only all the permits issued for each year (there is no need for further distinction in the type of permits issued for our analysis), and other relevant variables to identify the counties
+
+```{r}
+rcp <- building_permits %>%
+  select(
+    GEOID,
+    NAME, 
+    STATE_NAME,
+    starts_with("ALL_PERMITS"))
+```
+
+Keeping only 5 years prior to 2019
+
+```{r}
+rcp_14_18 <- rcp %>%
+  select(
+    GEOID,
+    NAME,
+    STATE_NAME,
+    matches("ALL_PERMITS_(2014|2015|2016|2017|2018)$")
+  )
+```
+
+Though we are going to keep every observations in this dataset for the time being and only proceed to remove observations that contains NA's, we can already get an idea of how many counties have NA's over the time span of 2014-2018.
+
+Let's (temporarily) create a variable that will count the NA's
+```{r}
+rcp_14_18 <- rcp_14_18 %>%
+  mutate(
+    na_count = rowSums(is.na(select(., starts_with("ALL_PERMITS"))))
+  )
+```
 
 
+```{r}
+na_count_table <- rcp_14_18 %>%
+  filter(na_count %in% 0:5) %>%
+  count(na_count) %>%
+  arrange(na_count) %>%
+  rename(
+    `Number of Missing Values` = na_count,
+    `Number of Counties` = n
+  )
+
+knitr::kable(
+  na_count_table,
+  caption = "Number of counties by number of missing values (2014–2018)"
+)
+```
 
 
+We can also check whether we do not get any duplicates in the counties
+
+```{r}
+sum(duplicated(rcp_14_18$GEOID))
+```
+
+Cleaned dataset for the building permits
+
+```{r}
+rcp_clean <- rcp_14_18 %>%
+  select(-na_count)
+```
 
 
 
