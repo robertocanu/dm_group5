@@ -9,24 +9,25 @@ number-sections: true
 ---
 
 ```{r}
+library(here)
+here::i_am('dm_group5.Rproj')
 library(vroom)
 library(readxl)
 library(dplyr)
 library(purrr)
 ```
 
-# Data Loading 
+# Data Loading
 
-After getting access to the packages that we need, we load the datasets needed for our research and all stored in the `data` folder of the project. 
-
+After getting access to the packages that we need, we load the datasets needed for our research and all stored in the `data` folder of the project.
 
 ## [FEMA National Risk Index (NRI)](https://resilience.climate.gov/datasets/FEMA::national-risk-index-census-tracts/about)
 
-The FEMA National Risk Index (NRI) is a nationwide dataset that estimates the relative risk of natural hazards across the U.S. It combines information on hazard frequency, exposure, expected annual losses (for buildings, people, and agriculture), and community resilience and social vulnerability. 
+The FEMA National Risk Index (NRI) is a nationwide dataset that estimates the relative risk of natural hazards across the U.S. It combines information on hazard frequency, exposure, expected annual losses (for buildings, people, and agriculture), and community resilience and social vulnerability.
 
-It provides risk metrics for 18 hazard types at multiple geographic levels (county, census tract, state, and national). Included in the dataset are also the county, state, and census tract FIPS code.  
+It provides risk metrics for 18 hazard types at multiple geographic levels (county, census tract, state, and national). Included in the dataset are also the county, state, and census tract FIPS code.
 
-The core metric of interest in the dataset is the NRI itself, which is a composite score ranging from 0 to 100 that reflects each area’s overall exposure and vulnerability to natural hazards. 
+The core metric of interest in the dataset is the NRI itself, which is a composite score ranging from 0 to 100 that reflects each area’s overall exposure and vulnerability to natural hazards.
 
 ```{r}
 NRI_dataset <- vroom('/Users/robertocanu/Desktop/dm_group5/data/National_Risk_Index_Census_Tracts_-2688098782675405028.csv', 
@@ -36,20 +37,20 @@ NRI_dataset <- vroom('/Users/robertocanu/Desktop/dm_group5/data/National_Risk_In
 ```
 
 We extract some specific variables we need and drop the rest: (TO FINISH)
+
 ```{r}
 NRI_value <- NRI_dataset$`National Risk Index - Value - Composite`
 NRI_score <- NRI_dataset$`National Risk Index - Score - Composite`
 FIPS_code <- NRI_dataset$`State-County FIPS Code`
 ```
 
-
 ## [SAIPE Dataset (Poverty / Median income) - U.S. Bureau of Census](https://www.census.gov/data/datasets/2019/demo/saipe/2019-state-and-county.html)
 
-This dataset contains the 2019 estimates for poverty and income in the United States, produced by the Small Area Income and Poverty Estimates program, often called SAIPE. It is a comprehensive dataset that includes estimates for the US, for every state, and for every county (3200 observations, of which 3144 at the county-level). 
+This dataset contains the 2019 estimates for poverty and income in the United States, produced by the Small Area Income and Poverty Estimates program, often called SAIPE. It is a comprehensive dataset that includes estimates for the US, for every state, and for every county (3200 observations, of which 3144 at the county-level).
 
 All the data files use a fixed-width format. This means the information for each geographic area is on a single line, and each piece of data is found in a specific column. The data includes several key metrics, each with its own estimate and a 90% confidence interval. The main metrics that we are going to use are: The number and percentage of people of all ages in poverty; the number and percentage of children under age 18 in poverty; the median household income. Each record ends with the area name, its two-letter state abbreviation, and a technical tag indicating the source file.
 
-We compile the `.xsl` file we downloaded into a `.csv` to better leverage the function `vroom` and improve efficiency. We also drop the first two rows of the excel file because they present information on the dataset (which have been integrated in the description above) and prevent the right compilation in categories into the `.csv` file. 
+We compile the `.xsl` file we downloaded into a `.csv` to better leverage the function `vroom` and improve efficiency. We also drop the first two rows of the excel file because they present information on the dataset (which have been integrated in the description above) and prevent the right compilation in categories into the `.csv` file.
 
 ```{r}
 temporary <- read_excel('/Users/robertocanu/Desktop/dm_group5/data/est19all.xls',
@@ -59,7 +60,7 @@ readr::write_csv(temporary, '/Users/robertocanu/Desktop/dm_group5/data/SAIPE.csv
 SAIPE <- vroom('/Users/robertocanu/Desktop/dm_group5/data/SAIPE.csv')
 ```
 
-Then we drop the five last columns of the loaded dataset `SAIPEI` because data is at the state-level. We also merge the FIPS codes at the state and county-level to get a unique one, since the latter is more commonly found and eases the process of merging the several datasets we use. 
+Then we drop the five last columns of the loaded dataset `SAIPEI` because data is at the state-level. We also merge the FIPS codes at the state and county-level to get a unique one, since the latter is more commonly found and eases the process of merging the several datasets we use.
 
 ```{r}
 SAIPE <- SAIPE[, -c(26:31)] |>
@@ -79,8 +80,8 @@ population <- population |>
   mutate(`Fips Code` = paste0(STATE, COUNTY)) |>
   relocate(`Fips Code`, .after = 5)
 ```
-The data contains raw numbers for the total population and the net change by county, from 2010 to 2020. We are interested in having rates of change which can be more reliably compared. For this purpose, we create an additional variable for each year, computed as the population change in year `x` divided by the population estimate in year `x-1`. 
-For clarity, the U.S. Bureau of Census publishes the estimates as the levels on the 1st of July of each year, so that the 2010's population estimate is the total on 1st of July 2010 and the population change in 2010 is the change between 1st of July 2009 and 1st of July 2010.
+
+The data contains raw numbers for the total population and the net change by county, from 2010 to 2020. We are interested in having rates of change which can be more reliably compared. For this purpose, we create an additional variable for each year, computed as the population change in year `x` divided by the population estimate in year `x-1`. For clarity, the U.S. Bureau of Census publishes the estimates as the levels on the 1st of July of each year, so that the 2010's population estimate is the total on 1st of July 2010 and the population change in 2010 is the change between 1st of July 2009 and 1st of July 2010.
 
 ```{r}
 estimates <- grep('^POPESTIMATE', names(population), value = TRUE, ignore.case = TRUE)
@@ -104,9 +105,6 @@ population <- population |>
 
 ```
 
-
-
-
 ## [Dataset on Building Permits - U.S. Department of Housing and Urban Development](https://hudgis-hud.opendata.arcgis.com/datasets/HUD::residential-construction-permits-by-county/explore?filters=eyJBTExfUEVSTUlUU18yMDE5IjpbMSwzNzc1NV0sIkFMTF9QRVJNSVRTXzIwMTgiOlsxLDM0MTQ5XSwiQUxMX1BFUk1JVFNfMjAxNyI6WzEsMjU3MzFdLCJBTExfUEVSTUlUU18yMDE2IjpbMSwyNTg1Nl0sIkFMTF9QRVJNSVRTXzIwMTUiOlsxLDMzOTc1XSwiQUxMX1BFUk1JVFNfMjAxNCI6WzEsNDAwNjBdfQ%3D%3D&location=30.113599%2C-95.660185%2C4.05)
 
 ```{r}
@@ -115,8 +113,9 @@ building_permits <- vroom('/Users/robertocanu/Desktop/dm_group5/data/Residential
                                date = col_date(), 
                                value = col_double()))
 ```
+
 NB: FIPS CODE called GEOID in this dataset.
 
-# Descriptive Statistics 
+# Descriptive Statistics
 
 ## Dataset on Building Permits - U.S. Department of Housing and Urban Development
