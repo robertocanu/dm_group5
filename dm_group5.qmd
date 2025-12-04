@@ -31,18 +31,7 @@ It provides risk metrics for 18 hazard types at multiple geographic levels (coun
 The core metric of interest in the dataset is the NRI itself, which is a composite score ranging from 0 to 100 that reflects each area’s overall exposure and vulnerability to natural hazards.
 
 ```{r}
-path <- here('datafold_complete', 'National_Risk_Index_Census_Tracts_-2688098782675405028.csv')
-NRI_dataset <- vroom(path, 
-              col_types = cols(id = col_character(), 
-                               date = col_date(), 
-                               value = col_double()))
-
-cut_index <- which(names(NRI_dataset) == 'National Risk Index - State Percentile - Composite')
-NRI_dataset2 <- NRI_dataset |> select(1:cut_index)
-
-output_path <- here('data', 'NRI_dataset2.csv')
-
-vroom_write(NRI_dataset2, output_path, delim = ",")
+NRI_dataset <- vroom(here('data', 'NRI_dataset2.csv'))
 ```
 
 We extract some specific variables we need and drop the rest: (TO FINISH)
@@ -62,7 +51,7 @@ All the data files use a fixed-width format. This means the information for each
 We compile the `.xsl` file we downloaded into a `.csv` to better leverage the function `vroom` and improve efficiency. We also drop the first two rows of the excel file because they present information on the dataset (which have been integrated in the description above) and prevent the right compilation in categories into the `.csv` file.
 
 ```{r}
-temporary <- read_excel(here('datafold_complete', 'est19all.xls'),
+temporary <- read_excel(here('data', 'est19all.xls'),
   sheet = 1, skip = 3)
 
 readr::write_csv(temporary, here('data', 'SAIPE.csv'))
