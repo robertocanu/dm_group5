@@ -368,5 +368,119 @@ SAIPE_clean <- SAIPE_v2 %>%
 
 ## NRI Dataset 
 
+We can first try to get an idea of the missing information for the key variable of this dataset
+```{r}
+sum(is.na(NRI_dataset$`National Risk Index - Score - Composite`))
+```
+What are the different counties that have missing values in either 1 or more census tracts
+```{r}
+NRI_dataset %>%
+  filter(is.na(`National Risk Index - Score - Composite`)) %>%
+  distinct(`State-County FIPS Code`)
+```
+From the tibble above, we can also see that there are 89 different counties with missing value.
+
+Each county has multiple NRI score and value. This is because it is a census-tracts level dataset. Essentially, each county is further divided into several census tracts. Thus, for our analysis, we would need to compute a county-level NRI score. This will be done by computing a population-weighted average of the census-tracts NRI scores of each county. 
+
+For our analysis, why does the average has to be weighted for the population in each census tracts you might ask? The answer is that housing prices reflect the market of where PEOPLE LIVE, not empty forest tracts or industrial zones for instance. Thus, the NRI score of a tracts with 50,000 inhabitants should influence the county exposure (and NRI score of that county) far more than one with only 500 inhabitants. 
+
+Let's compute the county-level NRI score using a population-weighted average
+
+```{r}
+county_nri <- NRI_dataset %>%
+  group_by(`State-County FIPS Code`) %>%
+  summarise(
+    pop_total = sum(`Population (2020)`, na.rm = TRUE),
+    nri_weighted = weighted.mean(`National Risk Index - Score - Composite`,
+                                 w = `Population (2020)`,
+                                 na.rm = TRUE))
+```
+
+We can also look at how many missing observations there are for the nri_weighted variable. 
+
+```{r}
+sum(is.na(county_nri$nri_weighted))
+```
+Due to the way nri_weighted was constructed using na.rm=TRUE, we can infer that there are 88 counties for whom there is no NRI score at the census tracts level at all. 
+
+Since there are 89 counties that have at least 1 NA at the census tracts level for the NRI score, that means there is one county that has both missing values and observations at the census tracts level. We can identify that county. 
+
+```{r}
+counties_with_any_na <- NRI_dataset %>%
+  filter(is.na(`National Risk Index - Score - Composite`)) %>%
+  distinct(`State-County FIPS Code`) %>%
+  pull(`State-County FIPS Code`)
+
+counties_all_missing <- county_nri %>%
+  filter(is.na(nri_weighted)) %>%
+  pull(`State-County FIPS Code`)
+
+mystery_county <- setdiff(counties_with_any_na, counties_all_missing)
+mystery_county
+```
+```{r}
+NRI_dataset %>%
+  filter(`State-County FIPS Code` == mystery_county) %>%
+  summarise(
+    total_tracts = n(),
+    n_valid = sum(!is.na(`National Risk Index - Score - Composite`)),
+    n_missing = sum(is.na(`National Risk Index - Score - Composite`))
+  )
+```
+We can see that the county with the FIPS identifier has only 1 single census tracts with a missing observation. Computing the population-weighted NRI score for that county would still be relevant. That county can be kept, meanwhile the 88 other counties will be dropped latter due to NA's. 
+
+
+Notice also that at the census tracts level, there are 5 different NRI ratings used by FEMA (7 including 'No Rating' and 'Insufficient Data')
+```{r}
+unique(NRI_dataset$`National Risk Index - Rating - Composite`)
+```
+
+For informative purposes, as rough estimates since it is not fully representative of the way that FEMA proceeds to come up with these ratings, we could find thresholds values for our county-level NRI that corresponds to these 5 ratings by computing quantile thresholds.
+
+```{r}
+library(ggplot2)
+
+county_nri %>%
+  ggplot(aes(x = nri_weighted)) +
+  geom_density(alpha = 0.6) +
+  geom_rug(sides = "b") +   # little vertical marks on the x-axis
+  theme_minimal() +
+  labs(
+    title = "Density of Population-Weighted County NRI Scores",
+    x = "Population-Weighted NRI Score",
+    y = "Density"
+  )
+```
+
+
+```{r}
+thresholds_county <- quantile(
+  county_nri$nri_weighted,
+  probs = c(.20, .40, .60, .80),
+  na.rm = TRUE
+)
+
+thresholds_county
+```
+
+Now associating the county-level NRI score to a rating based on these quantile thresholds. Note that those counties that have a missing observation for the county-level NRI score will receive the "No rating". 
+
+```{r}
+county_nri <- county_nri %>%
+  mutate(
+    rating = case_when(
+      is.na(nri_weighted) ~ "No Rating",
+      nri_weighted <= thresholds_county[1] ~ "Very Low",
+      nri_weighted <= thresholds_county[2] ~ "Relatively Low",
+      nri_weighted <= thresholds_county[3] ~ "Relatively Moderate",
+      nri_weighted <= thresholds_county[4] ~ "Relatively High",
+      TRUE ~ "Very High"
+    )
+  )
+```
+
+
+
+
 
 
