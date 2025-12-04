@@ -298,12 +298,75 @@ rcp_clean <- rcp_14_18 %>%
 ```
 
 
+## SAIPE Dataset 
+
+Notice that the SAIPE dataset includes FIPS codes for counties, but also 1 for the US, which is 00000, and a code for each state (e.g. 01000 for Alabama)
+
+Keeping only the relevant variables
+
+```{r}
+SAIPE_v2 <- SAIPE %>%
+  select(
+    `Complete FIPS code`,
+    Name,
+    `Median Household Income`,
+    `Poverty Estimate, All Ages`,
+    `Poverty Percent, All Ages`,
+    `Poverty Estimate, Age 0-17`,
+    `Poverty Percent, Age 0-17`,
+    `Poverty Estimate, Age 5-17 in Families`,
+    `Poverty Percent, Age 5-17 in Families`
+  )
+```
+
+We can check whether there are NA's in the dataset
+
+```{r}
+any(is.na(SAIPE_v2))
+```
+
+We can count how many NA's there are per rows to get an idea for how many counties we have a full set of information across all variables
+
+```{r}
+SAIPE_v2 <- SAIPE_v2 %>%
+  mutate(na_count = rowSums(is.na(.)))
+```
+
+```{r}
+na_count_table_SAIPE <- SAIPE_v2 %>%
+  filter(na_count %in% 0:7) %>%
+  count(na_count) %>%
+  arrange(na_count) %>%
+  rename(
+    `Number of Missing Values` = na_count,
+    `Number of Counties` = n
+  )
+
+knitr::kable(
+  na_count_table_SAIPE,
+  caption = "Number of counties by number of missing values"
+)
+```
+
+It seems that there is only one county for which we have no observations at all. 
+
+The county is the following
+
+```{r}
+SAIPE_v2 %>%
+  filter(na_count == 7) %>%
+  distinct(`Complete FIPS code`, Name)
+```
+
+Cleaned version of the SAIPE dataset 
+
+```{r}
+SAIPE_clean <- SAIPE_v2 %>%
+  select(-na_count)
+```
 
 
-
-
-
-
+## NRI Dataset 
 
 
 
