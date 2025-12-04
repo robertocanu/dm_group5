@@ -115,13 +115,133 @@ building_permits <- vroom(here('data', 'Residential_Construction_Permits_by_Coun
 
 NB: FIPS CODE called GEOID in this dataset.
 
-# ZHVI DATA
-
-## Loading the data
+## Zillow Home Value Index (ZHVI) Data
 
 ```{r}
-
+zhvi_data <- vroom(here('data', 'zhvi_county.csv'))
 ```
+
+# Data Cleaning 
+
+## ZHVI Data
+
+Creating a county code FIPS identifier
+```{r}
+zhvi_data <-zhvi_data %>%
+  mutate(CountyCodeFIPS = paste0(StateCodeFIPS, MunicipalCodeFIPS))
+```
+
+Checking that there are no CountryCodeFIPS duplicates (making sure that the same county does not appear twice)
+```{r}
+sum(duplicated(zhvi_data$CountyCodeFIPS))
+```
+
+Keeping onlt relevant variables to identifying counties and the observations for each month in the year 2019
+```{r}
+zhvi_2019 <- zhvi_data %>%
+  select(
+    CountyCodeFIPS,
+    State,
+    starts_with("2019-")
+  )
+```
+
+Checking whether there are missing values in the year 2019 overall across counties 
+```{r}
+any(is.na(select(zhvi_2019, starts_with("2019-"))))
+```
+
+Since there are missing observations and I want to compute a single ZHVI value for the year 2019 for each county by taking the mean of that year, I want to get an idea of whether we either have:
+
+- Counties for which there are no observations for the year 2019 
+
+- Or, counties have only a few missing observations 
+
+In the former case, these counties will be dropped later. In the latter case, it is still possible to compute a relevant value by averaging only over the months for which we have observations. 
+
+Thus, I am going to compute a variable that counts the number of NA's for each county/observation.
+
+```{r}
+zhvi_2019 <- zhvi_2019 %>%
+  mutate(
+    na_count_2019 = rowSums(is.na(select(., starts_with("2019-"))))
+  )
+```
+
+How many counties have a full set of observations for year 2019?
+
+```{r}
+zhvi_2019 %>%
+  filter(na_count_2019 == 0) %>%
+  nrow()
+```
+How many observations have only NA's in the year 2019? 
+
+```{r}
+zhvi_2019 %>%
+  filter(na_count_2019 == 12) %>%
+  nrow()
+```
+These 68 counties will later be dropped from the final sample. 
+
+
+Since we have 3073 counties in this dataset, we know that there are 3073 - (2983 + 68) = 22 counties for which we have partial observations for year 2019. 
+
+For these 22 counties, it could be nice to identify how many months of observation are missing for them in order to get an idea of how relevant taking the average of the year 2019 will be. 
+
+How many observations have either 1 or 2 months missing ? 
+
+```{r}
+zhvi_2019 %>% 
+  filter(na_count_2019 %in% c(1, 2)) %>% 
+  nrow()
+```
+It sounds to reasonable to still to compute the mean for the year 2019 with only the observed months for counties for which only 1 or 2 months are missing. However, computing an average for the year for counties that have more than 2 months of missing observations might not be optimal. We can thus identify these counties and drop them later. 
+
+Which is the FIPS code of the 4 counties that have more than 2 months of missing observations? 
+
+```{r}
+zhvi_2019 %>%
+  filter(na_count_2019 > 2, na_count_2019 < 12) %>%
+  distinct(CountyCodeFIPS)
+```
+
+These 4 counties will have to be dropped later on, but for the time being we can compute the average ZHVI value for the year 2019 with na.rm=True to avoiding losing the 18 counties that few missing months.
+
+Computing a single ZHVI value for each county in the dataset for the year 2019 by taking the mean value of that year 
+
+```{r}
+zhvi_2019 <- zhvi_2019 %>%
+  mutate(value_2019 = rowMeans(select(.,starts_with("2019-")),na.rm = TRUE))
+```
+
+
+Keeping only the variables core to our analysis
+
+```{r}
+zhvi_clean <- zhvi_2019 %>%
+  select(CountyCodeFIPS, State, value_2019)
+```
+
+Renaming the the average ZHVI value for the year 2019 
+
+```{r}
+zhvi_clean <- zhvi_clean %>%
+  rename(avg_ZHVI_2019 = value_2019)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
