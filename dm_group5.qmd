@@ -15,6 +15,7 @@ library(vroom)
 library(readxl)
 library(dplyr)
 library(purrr)
+library(stringr)
 ```
 
 # Data Loading
@@ -30,10 +31,18 @@ It provides risk metrics for 18 hazard types at multiple geographic levels (coun
 The core metric of interest in the dataset is the NRI itself, which is a composite score ranging from 0 to 100 that reflects each area’s overall exposure and vulnerability to natural hazards.
 
 ```{r}
-NRI_dataset <- vroom('/Users/robertocanu/Desktop/dm_group5/data/National_Risk_Index_Census_Tracts_-2688098782675405028.csv', 
+path <- here('datafold_complete', 'National_Risk_Index_Census_Tracts_-2688098782675405028.csv')
+NRI_dataset <- vroom(path, 
               col_types = cols(id = col_character(), 
                                date = col_date(), 
                                value = col_double()))
+
+cut_index <- which(names(NRI_dataset) == 'National Risk Index - State Percentile - Composite')
+NRI_dataset2 <- NRI_dataset |> select(1:cut_index)
+
+output_path <- here('data', 'NRI_dataset2.csv')
+
+vroom_write(NRI_dataset2, output_path, delim = ",")
 ```
 
 We extract some specific variables we need and drop the rest: (TO FINISH)
@@ -53,11 +62,12 @@ All the data files use a fixed-width format. This means the information for each
 We compile the `.xsl` file we downloaded into a `.csv` to better leverage the function `vroom` and improve efficiency. We also drop the first two rows of the excel file because they present information on the dataset (which have been integrated in the description above) and prevent the right compilation in categories into the `.csv` file.
 
 ```{r}
-temporary <- read_excel('/Users/robertocanu/Desktop/dm_group5/data/est19all.xls',
+temporary <- read_excel(here('datafold_complete', 'est19all.xls'),
   sheet = 1, skip = 3)
-# head(temporary)
-readr::write_csv(temporary, '/Users/robertocanu/Desktop/dm_group5/data/SAIPE.csv')  
-SAIPE <- vroom('/Users/robertocanu/Desktop/dm_group5/data/SAIPE.csv')
+
+readr::write_csv(temporary, here('data', 'SAIPE.csv'))
+                 
+SAIPE <- vroom(here('data', 'SAIPE.csv'))
 ```
 
 Then we drop the five last columns of the loaded dataset `SAIPEI` because data is at the state-level. We also merge the FIPS codes at the state and county-level to get a unique one, since the latter is more commonly found and eases the process of merging the several datasets we use.
@@ -71,7 +81,7 @@ SAIPE <- SAIPE[, -c(26:31)] |>
 ## [Dataset on Population and Population Growth - U.S. Bureau of Census](https://www.census.gov/programs-surveys/popest/technical-documentation/research/evaluation-estimates/2020-evaluation-estimates/2010s-counties-total.html)
 
 ```{r}
-population <- vroom('/Users/robertocanu/Desktop/dm_group5/data/co-est2020-alldata.csv',
+population <- vroom(here('data', 'co-est2020-alldata.csv'),
                     col_types = cols(id = col_character(), 
                                date = col_date(), 
                                value = col_double()))
@@ -108,7 +118,7 @@ population <- population |>
 ## [Dataset on Building Permits - U.S. Department of Housing and Urban Development](https://hudgis-hud.opendata.arcgis.com/datasets/HUD::residential-construction-permits-by-county/explore?filters=eyJBTExfUEVSTUlUU18yMDE5IjpbMSwzNzc1NV0sIkFMTF9QRVJNSVRTXzIwMTgiOlsxLDM0MTQ5XSwiQUxMX1BFUk1JVFNfMjAxNyI6WzEsMjU3MzFdLCJBTExfUEVSTUlUU18yMDE2IjpbMSwyNTg1Nl0sIkFMTF9QRVJNSVRTXzIwMTUiOlsxLDMzOTc1XSwiQUxMX1BFUk1JVFNfMjAxNCI6WzEsNDAwNjBdfQ%3D%3D&location=30.113599%2C-95.660185%2C4.05)
 
 ```{r}
-building_permits <- vroom('/Users/robertocanu/Desktop/dm_group5/data/Residential_Construction_Permits_by_County_5026727375813176131.csv', 
+building_permits <- vroom(here('data', 'Residential_Construction_Permits_by_County_5026727375813176131.csv'), 
               col_types = cols(id = col_character(), 
                                date = col_date(), 
                                value = col_double()))
