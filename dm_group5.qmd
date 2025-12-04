@@ -126,6 +126,14 @@ building_permits <- vroom(here('data', 'Residential_Construction_Permits_by_Coun
 
 NB: FIPS CODE called GEOID in this dataset.
 
-# Descriptive Statistics
+# ZHVI DATA
 
-## Dataset on Building Permits - U.S. Department of Housing and Urban Development
+## Loading the data
+
+```{r}
+
+```
+
+
+
+
