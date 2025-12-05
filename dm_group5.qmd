@@ -592,7 +592,7 @@ Making sure each of my dataset has the same variable name for the FIPS identifie
 
 ```{r}
 zhvi_clean <- zhvi_clean %>%
-  renamed(FIPS = CountyCodeFIPS)
+  rename(FIPS = CountyCodeFIPS)
 ```
 
 ```{r}
