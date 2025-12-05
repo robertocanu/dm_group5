@@ -479,6 +479,87 @@ county_nri <- county_nri %>%
   )
 ```
 
+To illustrate, we can also try to plot on a US map the county-level NRI ratings:
+
+Let's first Load all US counties in 2020 since the NRI data were computed in 2020
+```{r}
+library(tigris)
+library(sf)
+
+options(tigris_use_cache=TRUE)
+us_counties <- counties(cb=TRUE, year = 2020) %>%
+  st_as_sf()
+```
+Preparing the county_nri dataset for merging with the map dataset
+```{r}
+county_nri <- county_nri %>%
+  rename(GEOID = `State-County FIPS Code`)
+
+county_nri$GEOID <- as.character(county_nri$GEOID)
+```
+
+Merging
+```{r}
+map_data <- us_counties %>%
+  left_join(county_nri, by = "GEOID")
+```
+
+
+Plotting the scores
+```{r}
+map_conus <- st_crop(
+  map_data,
+  xmin = -125, xmax = -66,  # west/east
+  ymin =  20,  ymax =  50   # south/north
+)
+
+ggplot(map_conus) +
+  geom_sf(aes(fill = nri_weighted), color = NA) +
+  scale_fill_gradient(
+    name = "NRI (weighted)",
+    low  = "#eff3ff",   # very light blue
+    high = "#2171b5",   # moderate blue (not too dark)
+    na.value = "grey90"
+  ) +
+  coord_sf(expand = FALSE) +
+  theme_minimal() +
+  labs(title = "County-Level NRI Scores")
+```
+
+A much clearer and insightful perspective could be to plot the ratings instead
+```{r}
+map_conus$rating <- factor(
+  map_conus$rating,
+  levels = c(
+    "Very Low",
+    "Relatively Low",
+    "Relatively Moderate",
+    "Relatively High",
+    "Very High",
+    "No Rating"
+  )
+)
+
+ggplot(map_conus) +
+  geom_sf(aes(fill = rating), color = NA) +
+  scale_fill_manual(
+    name = "Rating",
+    values = c(
+      "Very Low"            = "#eff3ff",
+      "Relatively Low"      = "#deebf7",
+      "Relatively Moderate" = "#c6dbef",
+      "Relatively High"     = "#9ecae1",
+      "Very High"           = "#2171b5",
+      "No Rating"           = "grey90"
+    ),
+    na.value = "grey90"   # in case there are true NA values
+  ) +
+  coord_sf(expand = FALSE) +
+  theme_minimal() +
+  labs(title = "County-Level NRI Rating")
+```
+
+The clean version of the NRI dataset is 'county_nri'.
 
 
 
