@@ -588,6 +588,130 @@ any(is.na(pop_df))
 
 # Merging the datasets
 
+Making sure each of my dataset has the same variable name for the FIPS identifier
+
+```{r}
+zhvi_clean <- zhvi_clean %>%
+  renamed(FIPS = CountyCodeFIPS)
+```
+
+```{r}
+rcp_clean <- rcp_clean %>%
+  rename(FIPS = GEOID)
+
+SAIPE_clean <- SAIPE_clean %>%
+  rename(FIPS = `Complete FIPS code`)
+```
+
+```{r}
+nri_clean <- county_nri %>%
+  rename(FIPS = GEOID)
+
+pop_clean <- pop_df %>%
+  rename(FIPS = `Fips Code`)
+
+us_counties_clean <- us_counties %>%
+  select(
+    GEOID,
+    NAMELSAD,
+    STATE_NAME
+  )
+
+us_counties_clean <- us_counties_clean %>%
+  rename(FIPS = GEOID)
+```
+
+Some datasets include both county-level and state-level data, we can remove the state-level rows
+
+```{r}
+SAIPE_clean_v2 <- SAIPE_clean %>%
+  filter(!grepl("000$", FIPS))
+```
+
+```{r}
+pop_clean_v2 <- pop_clean %>%
+  filter(!grepl("000$", FIPS))
+```
+
+further deleting unimportant variables
+```{r}
+MRDY_ZHVI <- zhvi_clean %>%
+  select(-State)
+
+MRDY_RCP <- rcp_clean %>%
+  select(
+    -NAME,
+    -STATE_NAME
+  )
+
+MRDY_SAIPE <- SAIPE_clean_v2 %>%
+  select(-Name)
+
+MRDY_NRI <- nri_clean
+
+MRDY_POP <- pop_clean_v2 %>%
+  select(
+    -STATE,
+    -COUNTY,
+    -STNAME,
+    -CTYNAME
+  )
+```
+
+```{r}
+MRDY_COUNTIES <- us_counties_clean %>% 
+  st_drop_geometry()
+```
+
+Before merging, we want to make sure that every FIPS variable is of the same type
+```{r}
+MRDY_COUNTIES <- MRDY_COUNTIES %>% mutate(FIPS = as.character(FIPS))
+MRDY_ZHVI     <- MRDY_ZHVI     %>% mutate(FIPS = as.character(FIPS))
+MRDY_SAIPE    <- MRDY_SAIPE    %>% mutate(FIPS = as.character(FIPS))
+MRDY_RCP      <- MRDY_RCP      %>% mutate(FIPS = as.character(FIPS))
+MRDY_POP      <- MRDY_POP      %>% mutate(FIPS = as.character(FIPS))
+MRDY_NRI      <- MRDY_NRI      %>% mutate(FIPS = as.character(FIPS))
+```
+
+We also want to check that there are no duplicates in the FIPS for the different datasets
+```{r}
+any(duplicated(MRDY_COUNTIES$FIPS))
+any(duplicated(MRDY_ZHVI$FIPS))
+any(duplicated(MRDY_SAIPE$FIPS))
+any(duplicated(MRDY_RCP$FIPS))
+any(duplicated(MRDY_POP$FIPS))
+any(duplicated(MRDY_NRI$FIPS))
+```
+Using MRDY_COUNTIES as the list of all counties, we can left_join to merge everything together
+```{r}
+merged_df <- MRDY_COUNTIES %>%
+  left_join(MRDY_ZHVI,  by = "FIPS") %>%
+  left_join(MRDY_SAIPE, by = "FIPS") %>%
+  left_join(MRDY_RCP,   by = "FIPS") %>%
+  left_join(MRDY_POP,   by = "FIPS") %>%
+  left_join(MRDY_NRI,   by = "FIPS")
+```
+
+Ordering the FIPS from lowest to highest
+```{r}
+final_df <- merged_df %>%
+  arrange(FIPS)
+```
+
+
+Although further analysis is needed to determine which counties may need to be excluded from the regression due to missing values, but also to ensure that such exclusions do not bias the effects we aim to estimate, in the meantime, we can begin by checking how many fully complete rows (rows with no NA values) are available just to get a rough idea.
+
+```{r}
+sum(complete.cases(final_df))
+```
+
+
+
+
+
+
+
+
 
 
 
