@@ -561,6 +561,32 @@ ggplot(map_conus) +
 
 The clean version of the NRI dataset is 'county_nri'.
 
+## Population Dataset 
+
+Dropping all variable not interesting to our analysis
+```{r}
+pop_df <- population %>%
+  select(1:POPCHGRATE_2020)
+```
+
+Dropping all useless geographical identifier variables
+```{r}
+pop_df <- pop_df %>%
+  select(
+    -SUMLEV,
+    -REGION,
+    -DIVISION,
+  )
+```
+
+Are there NA's ? 
+```{r}
+any(is.na(pop_df))
+```
+
+
+
+# Merging the datasets
 
 
 
