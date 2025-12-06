@@ -27,7 +27,7 @@ The project can be accessed on Github at the following link: [Discount in Housin
 We intend to investigate whether the exposure to natural disasters creates a discount in housing prices, such that people’s reservation price in areas more at risk is lower. To do so, we want to regress  the Zillow Home Value Index - (which is a measure of the typical value of a house - hence of houses between the 35th and the 65th percentile of values – adjusted for price differences across the country) on the national risk index (a measure of exposure to natural disasters), while including a set of controls influencing prices (as state-level effects from different laws and regulations, poverty rates, building permits, median income). 
 Then, we want to deepen the research by analyzing how the discount varies depending on how rich the area is. Since poorer people have far fewer opportunities to get insurance—and even when they do, they tend to insure only a smaller share of their belongings—and because they usually own properties that are less well-prepared for natural disasters (cheaper houses built with lower-quality materials and outdated technologies), the negative impact on prices discussed earlier should be stronger in poorer counties (namely, a higher share of people having notably lower reservation costs for houses). Then, we intend to test the difference in effect between areas according to their income. We will do so either by using an interaction effect for the national risk index and the income within the main regression (adding some controls if needed) or by regressing a top and a bottom percentile in terms of income and testing differences between them. 
 
-## Project Description
+## Datasets Used & Main Variables
 The datasets we intend to use so far are five. They all present data from the United States at the county level (3144 counties), which will be merged using the FIPS code for each county.  
 The first two are the ones comprising the dependent variable (Zillow Home Value Index - ZHVI) and the independent one (Natural Risk Index - NRI). The other three are datasets containing various controls that we intend to use in the regressions.  
 NRI is available only for 2020; since it is constructed with data from 2014 to 2019 and it is inherently a slowly changing index per se (exposure to natural disasters does not change year by year), we decided to employ data from 2019 for most of the remaining variables, so to avoid shocks to the housing markets due to Covid to bias our results. Specifically, we will employ the Zillow index, the median income and the poverty rates of 2019. Instead, we will create an average from 2014 to 2018 for both the population change rate and the building permits granted; indeed, we want to use these two as controls and we believe that a number taking into account more of the previous years is more informative and prevent non-common spikes to weaken our controls. 
@@ -35,7 +35,7 @@ NRI is available only for 2020; since it is constructed with data from 2014 to 2
 
 # Data Loading & Sources 
 
-This section contains the links to the sources of the data we are employing, followed by the code to load that data and some first steps of manipulation for the sake of efficiency. The datasets derived from this stage are all stored in the `data` folder of the github project. 
+This section contains the links to the sources of the data we are employing. It follows the code to load that data and some first steps of preliminary data preparation with specific explanations behind their motive. The datasets derived from this stage are all stored in the `data` folder of the github project. 
 
 ## [Zillow Home Value Index (ZHVI) Data](https://www.zillow.com/research/data/?msockid=11606803e4976e040d5e7e84e5176f46)
 
@@ -50,17 +50,19 @@ zhvi_data <- vroom(here('data', 'zhvi_county.csv'))
 ### Data Description
 The Zillow Home Value Index (ZHVI) is a monthly, seasonally adjusted measure of the typical home value (homes within the 35th and 65th percentile range) for each U.S. county. In the dataset, counties are identified through the variables StateCodeFIPS and MunicipalCodeFIPS, which can be combined to get a standard five-digit county FIPS code that is used to identify the counties across all the datasets we use. 
 
-For our analysis, the ZHVI is a preferable measure of housing prices compared to median house prices because it reflects the estimated value of all homes, not just those recently sold. This makes it less sensitive to changes in the composition of transactions (for example, if only high-end homes sell in a given month). Thus, it provides a more stable and comprehensive measure of overall housing market value across counties. 
+The index is monthly, and we use the values of 2019, averaged, to get our dependent variable. 
+
+For what concerns the measure per se, the ZHVI is a preferable figure of housing prices compared to median house prices because it reflects the estimated value of all homes, not just those recently sold. This makes it less sensitive to changes in the composition of transactions (for example, if only high-end homes sell in a given month). Thus, it provides a more stable and comprehensive measure of overall housing market value across counties. 
 
 ### Data Summary Table 
 
-| Metric | Value | 
+| Descriptive Statistic | Value | 
 |--------|-------|
 | Number of observations | `r nrow(zhvi_data)` |
 | Number of variables | `r ncol(zhvi_data)` |
 | Number of missing values | `r sum(is.na(zhvi_data))` | 
 | Number of non-null values | `r sum(!is.na(zhvi_data))` | 
-| Percentage of missing values over the total | `r sum(is.na(zhvi_data)) / sum(!is.na(zhvi_data))` |
+| Percentage of missing values  | `r sum(is.na(zhvi_data)) / sum(!is.na(zhvi_data))` |
 
 
 
@@ -78,22 +80,20 @@ The dataset can be easily and directly retrieved from the page linked. Being it 
 
 ### Data Description
 
-The FEMA National Risk Index (NRI) is a nationwide dataset that estimates the relative risk of natural hazards across the U.S. It combines information on hazard frequency, exposure, expected annual losses (for buildings, people, and agriculture), and community resilience and social vulnerability.
+The FEMA National Risk Index (NRI) is a nationwide dataset that estimates the relative risk of natural hazards across the U.S. It combines information on hazard frequency, exposure, expected annual losses (for buildings, people, and agriculture), and community resilience and social vulnerability. It provides risk metrics for 18 hazard types at the census-tract geographical level, meaning it provides multiple observations for each county. Included in the dataset are also the county, state, and census tract FIPS code.
 
-It provides risk metrics for 18 hazard types at the census-tract geographical level, meaning it provides multiple observations for each county. Included in the dataset are also the county, state, and census tract FIPS code.
-
-The core metric of interest in the dataset is the NRI itself, which is a composite score ranging from 0 to 100 that reflects each area’s overall exposure and vulnerability to natural hazards.
+The core metric of interest in the dataset is the NRI itself, which is a composite score ranging from 0 to 100 that reflects each area’s overall exposure and vulnerability to natural hazards. Another metric is the `Rating` of the index, which assigns to every county a qualitative category — from “Very Low” up to “Very High” — that describes how its risk compares with all other counties in the United States. This is derived converting the value into a percentile score (0–100) that ranks the county relative to all others. Finally, the score is grouped into one of five qualitative `Rating` categories using a clustering method (such as natural breaks), producing the final label from *Very Low* to *Very High*. We employ the rating only to undertake a comparison to the simpler measure that we will use as the independent variable, namely a rating based directly on the county’s risk percentile.
 
 
 ### Data Summary Table 
 
-| Metric | Value | 
+| Descriptive Statistic | Value | 
 |--------|-------|
 | Number of observations | `r nrow(NRI_dataset)` |
 | Number of variables | `r ncol(NRI_dataset)` |
 | Number of missing values | `r sum(is.na(NRI_dataset))` | 
 | Number of non-null values | `r sum(!is.na(NRI_dataset))` | 
-| Percentage of missing values over the total | `r sum(is.na(NRI_dataset)) / sum(!is.na(NRI_dataset))` |
+| Percentage of missing values  | `r sum(is.na(NRI_dataset)) / sum(!is.na(NRI_dataset))` |
 
 
 
@@ -127,18 +127,18 @@ SAIPE <- SAIPE[, -c(26:31)] |>
 
 This dataset contains the 2019 estimates for poverty and income in the United States, produced by the Small Area Income and Poverty Estimates program, often called SAIPE. It is a comprehensive dataset that includes estimates for the US, for every state, and for every county (3200 observations, of which 3144 at the county-level).
 
-All the data files use a fixed-width format. This means the information for each geographic area is on a single line, and each piece of data is found in a specific column. The data includes several key metrics, each with its own estimate and a 90% confidence interval. The main metrics that we are going to use are: The number and percentage of people of all ages in poverty; the number and percentage of children under age 18 in poverty; the median household income. Each record ends with the area name, its two-letter state abbreviation, and a technical tag indicating the source file.
+All the data files use a fixed-width format. This means the information for each geographic area is on a single line, and each piece of data is found in a specific column. The data includes several key metrics, each with its own estimate and a 90% confidence interval. The main metrics that we are going to use are: the number and percentage of people of all ages in poverty; the number and percentage of children under age 18 in poverty; the median household income. Each record ends with the area name, its two-letter state abbreviation, and a technical tag indicating the source file. All these variables will be employed as controls in our analysis.
 
 
 ### Data Summary Table 
 
-| Metric | Value | 
+| Descriptive Statistic | Value | 
 |--------|-------|
 | Number of observations | `r nrow(SAIPE)` |
 | Number of variables | `r ncol(SAIPE)` |
 | Number of missing values | `r sum(is.na(SAIPE))` | 
 | Number of non-null values | `r sum(!is.na(SAIPE))` | 
-| Percentage of missing values over the total | `r sum(is.na(SAIPE)) / sum(!is.na(SAIPE))` |
+| Percentage of missing values  | `r sum(is.na(SAIPE)) / sum(!is.na(SAIPE))` |
 
 
 
@@ -149,14 +149,10 @@ All the data files use a fixed-width format. This means the information for each
 To retrieve the dataset, one must donwload under the section **Annual Resident Population Estimates, Components of Change, and Rates of Population Change** the file `Annual Resident Population Estimates, Estimated Components of Resident Population Change, and Rates of the Components of Resident Population Change for States and Counties: April 1, 2010 to July 1, 2020 (CO-EST2020-alldata)`. 
 
 
-### Data Description
+### Data Description & Preliminary Data Preparation
 
-The data contains raw numbers for the total population and the net change by county, from 2010 to 2020, but it doesn't contain the rate of change (for this purpose, we create a variable as described in the next section. We are interested in having rates of change which can be more reliably compared. For this purpose, we create an additional variable for each year, computed as the population change in year `x` divided by the population estimate in year `x-1`. For clarity, the U.S. Bureau of Census publishes the estimates as the levels on the 1st of July of each year, so that the 2010's population estimate is the total on 1st of July 2010 and the population change in 2010 is the change between 1st of July 2009 and 1st of July 2010.
-
-
-### Preliminary Data Preparation
-
-We first combined the state and county codes to get the complete FIPS code. Then, given we inted to use a measure of population change across the years before 2019 as a control for the increase in housing prices, we created a new variable being the rate of change for each year (called `POPCHGRATE_XXXX`). We compute this variable as the population change in year `x` divided by the population estimate in year `x-1`. For clarity, the U.S. Bureau of Census publishes the estimates as the levels on the 1st of July of each year, so that the 2010's population estimate is the total on 1st of July 2010 and the population change in 2010 is the change between 1st of July 2009 and 1st of July 2010.
+The dataset contains raw numbers for the total population and the net change by county, from 2010 to 2020. Then, given we intend to use a measure of population change across the years before 2019 as a control for the increase in housing prices, we created a new variable being the rate of change for each year (called `POPCHGRATE_XXXX`). We compute this variable as the population change in year `x` divided by the population estimate in year `x-1`. For clarity, the U.S. Bureau of Census publishes the estimates as the levels on the 1st of July of each year, so that the 2010's population estimate is the total on 1st of July 2010 and the population change in 2010 is the change between 1st of July 2009 and 1st of July 2010.
+We also combined the state and county codes to get the complete FIPS code. 
 
 ```{r}
 population <- vroom(here('data', 'co-est2020-alldata.csv'),
@@ -190,15 +186,16 @@ population <- population |>
 
 ```
 
+
 ### Data Summary Table 
 
-| Metric | Value | 
+| Descriptive Statistic | Value | 
 |--------|-------|
 | Number of observations | `r nrow(population)` |
 | Number of variables | `r ncol(population)` |
 | Number of missing values | `r sum(is.na(population))` | 
 | Number of non-null values | `r sum(!is.na(population))` | 
-| Percentage of missing values over the total | `r sum(is.na(population)) / sum(!is.na(population))` |
+| Percentage of missing values | `r sum(is.na(population)) / sum(!is.na(population))` |
 
 
 
@@ -216,22 +213,24 @@ building_permits <- vroom(here('data', 'Residential_Construction_Permits_by_Coun
 ```
 
 ### Data Description 
-The variable we are interested in is `ALL_PERMITS_XXXX`, which provides the raw number of construction permits granted within a county during the specified year. Two other variables are included: the geographic code (coordinates) and the county code. This dataset, as evident in the table below, present an extremely large number of missing values because there are a lot of variables, which we get rid of in the data cleaning process, that consider specific sections of the permits and for which data is available only in bigger counties. It will significantly diminish when only the variable containing all permits is kept. 
+The variable we are interested in is `ALL_PERMITS_XXXX`, which provides the raw number of construction permits granted within a county during the specified year. Two other variables are included: the geographic code (coordinates) and the county code. This dataset, as evident in the table below, present an extremely large number of missing values for the large number of variables, which we get rid of in the data cleaning process, that consider specific sections of the permits and for which data is available only in bigger counties. It will significantly diminish when only the variable containing all permits is kept. 
 
 
 ### Data Summary Table 
 
-| Metric | Value | 
+| Descriptive Statistic | Value | 
 |--------|-------|
 | Number of observations | `r nrow(building_permits)` |
 | Number of variables | `r ncol(building_permits)` |
 | Number of missing values | `r sum(is.na(building_permits))` | 
 | Number of non-null values | `r sum(!is.na(building_permits))` |
-| Percentage of missing values over the total | `r sum(is.na(building_permits)) / sum(!is.na(building_permits))` |
+| Percentage of missing values  | `r sum(is.na(building_permits)) / sum(!is.na(building_permits))` |
 
 
 
 # Data Cleaning
+
+This section contains the manipulation we did on the datasets to get the final merged version. Moreover, it discusses the characteristics of each dataset and present graphical representations for our main target variable, the `Zillow Value Index` of housing prices, and our independent variable, the `NRI Index`. 
 
 ## ZHVI Data
 
@@ -344,6 +343,7 @@ Renaming the the average ZHVI value for the year 2019
 zhvi_clean <- zhvi_clean %>%
   rename(avg_ZHVI_2019 = value_2019)
 ```
+
 
 ## Residential Construction Permits Dataset
 
@@ -477,6 +477,7 @@ SAIPE_clean <- SAIPE_v2 %>%
   select(-na_count)
 ```
 
+
 ## NRI Dataset
 
 We can first try to get an idea of the missing information for the key variable of this dataset
@@ -499,7 +500,7 @@ Each county has multiple NRI score and value. This is because it is a census-tra
 
 For our analysis, why does the average has to be weighted for the population in each census tracts you might ask? The answer is that housing prices reflect the market of where PEOPLE LIVE, not empty forest tracts or industrial zones for instance. Thus, the NRI score of a tracts with 50,000 inhabitants should influence the county exposure (and NRI score of that county) far more than one with only 500 inhabitants.
 
-Let's compute the county-level NRI score using a population-weighted average
+Let's compute the county-level NRI score using a population-weighted average.
 
 ```{r}
 county_nri <- NRI_dataset %>%
@@ -598,7 +599,7 @@ county_nri <- county_nri %>%
 
 To illustrate, we can also try to plot on a US map the county-level NRI ratings:
 
-Let's first Load all US counties in 2020 since the NRI data were computed in 2020
+Let's first load all US counties in 2020 since the NRI data were computed in 2020
 
 ```{r}
 library(tigris)
@@ -683,6 +684,7 @@ ggplot(map_conus) +
 
 The clean version of the NRI dataset is 'county_nri'.
 
+
 ## Population Dataset
 
 Dropping all variable not interesting to our analysis
@@ -703,15 +705,14 @@ pop_df <- pop_df %>%
   )
 ```
 
-Are there NA's ?
-
+The number of missing values in the dataset is extremely small:
 ```{r}
-any(is.na(pop_df))
+100 * mean(is.na(pop_df))
 ```
 
-# Merging the datasets
+# Data Merging
 
-Making sure each of my dataset has the same variable name for the FIPS identifier
+Making sure each of the datasets has the same variable name for the FIPS identifier
 
 ```{r}
 zhvi_clean <- zhvi_clean %>%
@@ -827,7 +828,7 @@ final_df <- merged_df %>%
   arrange(FIPS)
 ```
 
-Although further analysis is needed to determine which counties may need to be excluded from the regression due to missing values, but also to ensure that such exclusions do not bias the effects we aim to estimate, in the meantime, we can begin by checking how many fully complete rows (rows with no NA values) are available just to get a rough idea.
+Although further analysis is needed to determine which counties may need to be excluded from the regression due to missing values, but also to ensure that such exclusions do not bias the effects we aim to estimate, in the meantime, we can begin by checking how many fully complete rows (rows with no `NA` values) are available just to get a rough idea. 
 
 ```{r}
 sum(complete.cases(final_df))
